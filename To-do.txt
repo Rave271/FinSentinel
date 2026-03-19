@@ -1,0 +1,78 @@
+## Phase 1 — Project setup & data ingestion
+
+- [ ] Initialise GitHub repo with monorepo structure (backend/, frontend/, notebooks/)
+- [ ] Set up .env template with all required API key placeholders
+- [ ] Write docker-compose.yml with FastAPI + Redis services
+- [ ] Register Alpha Vantage API key and test WebSocket price feed
+- [ ] Register NewsAPI key and verify /v2/everything endpoint for finance queries
+- [ ] Set up Reddit PRAW credentials and test r/IndiaInvestments scraper
+- [ ] Build PriceFeed worker — write normalised tick events to Redis Stream
+- [ ] Build NewsFeed worker — poll every 90s, deduplicate, write to Redis Stream
+- [ ] Build SocialFeed worker — poll every 120s, clean posts, write to Redis Stream
+- [ ] Unit test all three workers with mock data
+
+## Phase 2 — NLP sentiment pipeline
+
+- [ ] Load ProsusAI/finbert from HuggingFace Hub and verify inference on sample text
+- [ ] Build tokenization + batch inference pipeline (batch_size=32)
+- [ ] Implement temperature scaling calibration on logits
+- [ ] Implement sentiment score mapping: pos_prob - neg_prob → float [-1, +1]
+- [ ] Implement EWMA aggregation over 30-min rolling window per ticker
+- [ ] Fine-tune FinBERT on Financial PhraseBank + labeled Reddit posts dataset
+- [ ] Evaluate fine-tuned model accuracy on held-out test set, log results
+- [ ] Write sentiment scores back to Redis with appropriate TTLs
+
+## Phase 3 — Signal fusion ML model (XGBoost)
+
+- [ ] Collect 18 months of NSE top-100 historical OHLCV data for training
+- [ ] Engineer price features: 1m/5m/30m delta, RSI-14, volume spike z-score
+- [ ] Engineer news features: sentiment EWMA, article velocity, source credibility score
+- [ ] Engineer social features: Reddit score EWMA, comment sentiment, post velocity
+- [ ] Implement sentiment-price divergence score feature (key novelty)
+- [ ] Label training data: 4-hour forward return → BUY / HOLD / SELL
+- [ ] Train XGBoost classifier with walk-forward cross-validation
+- [ ] Tune hyperparameters (n_estimators, max_depth, learning_rate)
+- [ ] Evaluate directional accuracy, log baseline vs model performance
+- [ ] Serialise final model with joblib for production use
+
+## Phase 4 — Explainability (XAI) layer
+
+- [ ] Integrate SHAP TreeExplainer on trained XGBoost model
+- [ ] Build explanation template engine: convert SHAP values → natural language strings
+- [ ] Pre-compute SHAP values async and cache in Redis (avoid latency on request path)
+- [ ] Write unit tests for explanation output format
+
+## Phase 5 — FastAPI backend
+
+- [ ] Scaffold FastAPI app with CORS, JWT auth middleware, rate limiting
+- [ ] Implement GET /api/signal/{ticker} endpoint
+- [ ] Implement GET /api/news/{ticker} endpoint
+- [ ] Implement POST /api/portfolio/analyze endpoint
+- [ ] Implement GET /api/divergence/{ticker} endpoint
+- [ ] Implement WS /ws/live/{ticker} WebSocket endpoint with 60s push
+- [ ] Integrate APScheduler inside FastAPI for periodic data polling workers
+- [ ] Connect to Supabase via DATABASE_URL, run initial schema migrations
+- [ ] Write Pytest integration tests for all endpoints
+
+## Phase 6 — React frontend
+
+- [ ] Scaffold React + TypeScript app, configure Vercel deployment
+- [ ] Build ticker search bar with live suggestions
+- [ ] Build signal card component (BUY/HOLD/SELL badge + confidence %)
+- [ ] Build SHAP explanation bar chart using Recharts
+- [ ] Build live price + sentiment dual-axis chart (Recharts)
+- [ ] Build news feed panel with per-article sentiment colour coding
+- [ ] Build portfolio input form and personalized risk dashboard
+- [ ] Build divergence alerts panel (red flag when sentiment ≠ price direction)
+- [ ] Connect all components to FastAPI via REST + WebSocket
+- [ ] Ensure full dark mode compatibility across all components
+
+## Phase 7 — Deployment & demo prep
+
+- [ ] Provision Supabase project, run migrations, verify remote DB connection
+- [ ] Provision Render managed Redis add-on, update REDIS_URL in .env
+- [ ] Deploy FastAPI Docker image to Render.com, verify health check endpoint
+- [ ] Deploy React app to Vercel, point VITE_API_URL to Render backend URL
+- [ ] End-to-end smoke test: open live URL, query RELIANCE, verify signal card
+- [ ] Prepare 5-step live demo script for viva (matching Section 9 of LLD)
+- [ ] Write README with architecture diagram, setup instructions, and API docs
