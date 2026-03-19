@@ -1,24 +1,25 @@
 ## Phase 1 — Project setup & data ingestion
 
-- [ ] Initialise GitHub repo with monorepo structure (backend/, frontend/, notebooks/)
-- [ ] Set up .env template with all required API key placeholders
-- [ ] Write docker-compose.yml with FastAPI + Redis services
-- [ ] Register Alpha Vantage API key and test WebSocket price feed
-- [ ] Register NewsAPI key and verify /v2/everything endpoint for finance queries
-- [ ] Set up Reddit PRAW credentials and test r/IndiaInvestments scraper
-- [ ] Build PriceFeed worker — write normalised tick events to Redis Stream
-- [ ] Build NewsFeed worker — poll every 90s, deduplicate, write to Redis Stream
-- [ ] Build SocialFeed worker — poll every 120s, clean posts, write to Redis Stream
-- [ ] Unit test all three workers with mock data
+- [x] Initialise GitHub repo with monorepo structure (backend/, frontend/, notebooks/)
+- [x] Set up .env template with all required API key placeholders
+- [x] Write docker-compose.yml with FastAPI + Redis services
+- [x] Register Alpha Vantage API key and test WebSocket price feed
+- [x] Register NewsAPI key and verify /v2/everything endpoint for finance queries
+- [x] Build PriceFeed worker — write normalised tick events to Redis Stream
+- [x] Build NewsFeed worker — poll every 90s, deduplicate, write to Redis Stream
+- [x] Implement Google News RSS scraper in social_worker.py using feedparser, polling https://news.google.com/rss/search?q={ticker}+stock&hl=en-IN&gl=IN&ceid=IN:en every 120 seconds, writing to Redis Stream social:stream as { ticker, text, source, ts } with exponential backoff
+- [x] Unit test all three workers with mock data
+
+Redis live verification pending — run docker-compose up and execute the smoke test command in PHASE1_VERIFY.md.
 
 ## Phase 2 — NLP sentiment pipeline
 
-- [ ] Load ProsusAI/finbert from HuggingFace Hub and verify inference on sample text
-- [ ] Build tokenization + batch inference pipeline (batch_size=32)
-- [ ] Implement temperature scaling calibration on logits
-- [ ] Implement sentiment score mapping: pos_prob - neg_prob → float [-1, +1]
-- [ ] Implement EWMA aggregation over 30-min rolling window per ticker
-- [ ] Fine-tune FinBERT on Financial PhraseBank + labeled Reddit posts dataset
+- [x] Load ProsusAI/finbert from HuggingFace Hub and verify inference on sample text
+- [x] Build tokenization + batch inference pipeline (batch_size=32)
+- [x] Implement temperature scaling calibration on logits
+- [x] Implement sentiment score mapping: pos_prob - neg_prob → float [-1, +1]
+- [x] Implement EWMA aggregation over 30-min rolling window per ticker
+- [ ] Fine-tune FinBERT on Financial PhraseBank + labeled Reddit posts dataset (in progress)
 - [ ] Evaluate fine-tuned model accuracy on held-out test set, log results
 - [ ] Write sentiment scores back to Redis with appropriate TTLs
 

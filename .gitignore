@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+env/
+venv/
+.pytest_cache/
+
+# Editor
+.vscode/
+.DS_Store
+
+# Secrets
+.env
+
+# Database
+*.db
+
+# Node
+node_modules/
+
+# Local model artifacts
+backend/models/
+
+# Generated local data
+data/news_headlines.csv
+data/price_quotes.csv
+data/scored_headlines.csv
