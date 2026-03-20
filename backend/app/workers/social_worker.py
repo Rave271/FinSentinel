@@ -75,6 +75,7 @@ def fetch_ticker_news(ticker, redis_client=None, parser=None):
         normalized_entries.append(entry)
 
     scores = sentiment.score_texts(texts) if texts else []
+    pushed_entries = []
     for entry, text, score in zip(normalized_entries, texts, scores):
         source = (entry.get("source", {}) or {}).get("title") or "google-news-rss"
         ts = (
@@ -91,6 +92,32 @@ def fetch_ticker_news(ticker, redis_client=None, parser=None):
             sentiment_score=score["sentiment_score"],
             redis_client=client,
         )
+        pushed_entries.append(
+            {
+                "ticker": ticker,
+                "ts": ts,
+                "sentiment_score": score["sentiment_score"],
+            }
+        )
+    return pushed_entries
+
+
+def cache_batch_sentiment(rows, redis_client=None):
+    client = redis_client or redis
+    by_ticker = {}
+    for row in rows:
+        ticker = row["ticker"]
+        by_ticker.setdefault(ticker, {"scores": [], "timestamps": []})
+        by_ticker[ticker]["scores"].append(float(row["sentiment_score"]))
+        by_ticker[ticker]["timestamps"].append(row["ts"])
+
+    for ticker, payload in by_ticker.items():
+        ewma_score = sentiment.compute_ewma_score(
+            ticker,
+            payload["scores"],
+            payload["timestamps"],
+        )
+        sentiment.cache_sentiment_score(ticker, "social", ewma_score, client)
 
 
 def main_loop(poll_interval=POLL_INTERVAL):
@@ -98,8 +125,10 @@ def main_loop(poll_interval=POLL_INTERVAL):
     print("Social worker started with Google News RSS")
     while True:
         try:
+            cycle_rows = []
             for ticker in get_watchlist():
-                fetch_ticker_news(ticker)
+                cycle_rows.extend(fetch_ticker_news(ticker))
+            cache_batch_sentiment(cycle_rows)
             backoff = 1
             time.sleep(poll_interval)
         except KeyboardInterrupt:

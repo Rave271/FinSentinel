@@ -20,6 +20,8 @@ LABEL_MAP = {
     2: "neutral",
 }
 
+SENTIMENT_TTL_SECONDS = 5 * 60
+
 
 @dataclass
 class FinBERTSentimentPipeline:
@@ -133,3 +135,8 @@ def compute_ewma_score(ticker, scores, timestamps) -> float:
         previous_ts = current_ts
 
     return round(float(ewma), 4)
+
+
+def cache_sentiment_score(ticker, source, score, redis_client):
+    key = f"sentiment:{source}:{ticker}"
+    redis_client.setex(key, SENTIMENT_TTL_SECONDS, str(float(score)))

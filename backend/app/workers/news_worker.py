@@ -85,6 +85,24 @@ def push_article(a, redis_client=None):
         client.xadd(STREAM_KEY, fields)
 
 
+def cache_batch_sentiment(rows, redis_client=None):
+    client = redis_client or redis
+    by_ticker = {}
+    for row in rows:
+        ticker = row.get("ticker", "MARKET")
+        by_ticker.setdefault(ticker, {"scores": [], "timestamps": []})
+        by_ticker[ticker]["scores"].append(float(row.get("sentiment_score", 0.0)))
+        by_ticker[ticker]["timestamps"].append(row.get("published_at") or row.get("ts"))
+
+    for ticker, payload in by_ticker.items():
+        ewma_score = sentiment.compute_ewma_score(
+            ticker,
+            payload["scores"],
+            payload["timestamps"],
+        )
+        sentiment.cache_sentiment_score(ticker, "news", ewma_score, client)
+
+
 def main_loop(poll_interval=90):
     backoff = 1
     max_backoff = 300
@@ -92,8 +110,10 @@ def main_loop(poll_interval=90):
     while True:
         try:
             rows = read_articles()
-            for a in enrich_articles_with_sentiment(rows):
+            enriched_rows = enrich_articles_with_sentiment(rows)
+            for a in enriched_rows:
                 push_article(a)
+            cache_batch_sentiment(enriched_rows)
             backoff = 1
         except KeyboardInterrupt:
             raise

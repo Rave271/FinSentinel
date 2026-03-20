@@ -50,6 +50,13 @@ def test_enrich_articles_with_sentiment(monkeypatch):
     assert enriched[0]["sentiment_score"] == 0.75
 
 
+def test_cache_sentiment_score_writes_ttl_value():
+    r = FakeRedis()
+    sentiment.cache_sentiment_score("INFY", "news", 0.42, r)
+    assert r.get("sentiment:news:INFY") == b"0.42"
+    assert 0 < r.ttl("sentiment:news:INFY") <= 300
+
+
 def test_push_social_event_creates_stream_entry(monkeypatch):
     r = FakeRedis()
     monkeypatch.setattr(social_worker, "redis", r)
@@ -102,6 +109,38 @@ def test_fetch_ticker_news_parses_title_and_summary(monkeypatch):
     assert fields[b"source"] == b"google-news-rss"
     assert fields[b"sentiment_label"] == b"positive"
     assert fields[b"sentiment_score"] == b"0.91"
+
+
+def test_news_batch_caches_ewma(monkeypatch):
+    r = FakeRedis()
+    monkeypatch.setattr(news_worker, "redis", r)
+    rows = [
+        {
+            "ticker": "INFY",
+            "headline": "INFY beats estimates",
+            "published_at": "2026-03-20T00:00:00Z",
+            "sentiment_score": 0.2,
+        },
+        {
+            "ticker": "INFY",
+            "headline": "INFY raises guidance",
+            "published_at": "2026-03-20T00:30:00Z",
+            "sentiment_score": 0.8,
+        },
+    ]
+    news_worker.cache_batch_sentiment(rows, redis_client=r)
+    assert r.get("sentiment:news:INFY") == b"0.5"
+
+
+def test_social_batch_caches_ewma(monkeypatch):
+    r = FakeRedis()
+    monkeypatch.setattr(social_worker, "redis", r)
+    rows = [
+        {"ticker": "INFY", "ts": "2026-03-20T00:00:00Z", "sentiment_score": 0.2},
+        {"ticker": "INFY", "ts": "2026-03-20T00:30:00Z", "sentiment_score": 0.8},
+    ]
+    social_worker.cache_batch_sentiment(rows, redis_client=r)
+    assert r.get("sentiment:social:INFY") == b"0.5"
 
 
 def test_compute_ewma_score_returns_smoothed_value():
