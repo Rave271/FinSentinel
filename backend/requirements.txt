@@ -1,5 +1,6 @@
 fastapi==0.95.2
 uvicorn[standard]==0.22.0
+numpy==1.26.4
 pandas==2.1.1
 nltk==3.8.1
 redis==4.6.0
