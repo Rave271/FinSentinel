@@ -15,3 +15,5 @@ scipy==1.16.3
 datasets==4.8.3
 xgboost==2.1.4
 scikit-learn==1.5.2
+shap==0.48.0
+APScheduler==3.10.4

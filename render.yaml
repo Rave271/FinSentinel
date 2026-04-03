@@ -1,0 +1,40 @@
+services:
+  - name: finsentinel-api
+    type: web
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: finsentinel-cache
+          type: keyvalue
+          property: connectionString
+      - key: NEWS_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENABLE_BACKGROUND_WORKERS
+        value: "1"
+      - key: ALLOW_DEV_AUTH_TOKENS
+        value: "0"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "120"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: SOCIAL_POLL_INTERVAL
+        value: "120"
+
+  - name: finsentinel-cache
+    type: keyvalue
+    plan: free
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

@@ -7,22 +7,41 @@ from datetime import datetime, timezone
 from redis import Redis
 
 from app import sentiment
+from app.universe import NIFTY50_SYMBOLS
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 redis = Redis.from_url(REDIS_URL)
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', '..', 'data', 'news_headlines.csv')
 STREAM_KEY = "news:stream"
-WATCHLIST = os.environ.get("NEWS_WATCHLIST", os.environ.get("SOCIAL_WATCHLIST", "RELIANCE,INFY,TCS"))
+WATCHLIST = os.environ.get("NEWS_WATCHLIST", os.environ.get("SOCIAL_WATCHLIST", ",".join(NIFTY50_SYMBOLS)))
 
 
 def read_articles():
     rows = []
     try:
         with open(DATA_PATH, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for r in reader:
-                rows.append(r)
+            sample = f.read(2048)
+            f.seek(0)
+            has_header = csv.Sniffer().has_header(sample) if sample.strip() else False
+            if has_header:
+                reader = csv.DictReader(f)
+                for r in reader:
+                    rows.append(r)
+            else:
+                reader = csv.reader(f)
+                for raw in reader:
+                    if not raw:
+                        continue
+                    rows.append(
+                        {
+                            "id": raw[0] if len(raw) > 0 else "",
+                            "headline": raw[1] if len(raw) > 1 else "",
+                            "source": raw[2] if len(raw) > 2 else "",
+                            "published_at": raw[3] if len(raw) > 3 else "",
+                            "url": raw[4] if len(raw) > 4 else "",
+                        }
+                    )
     except FileNotFoundError:
         return []
     return rows

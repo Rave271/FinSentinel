@@ -1,0 +1,1 @@
+"""FinSentinel backend application package."""

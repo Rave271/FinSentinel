@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 from redis import Redis
 from app import sentiment
+from app.universe import NIFTY50_SYMBOLS
 
 try:
     import feedparser
@@ -16,7 +17,7 @@ except Exception:
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 redis = Redis.from_url(REDIS_URL)
 
-WATCHLIST = os.environ.get("SOCIAL_WATCHLIST", "RELIANCE,INFY,TCS")
+WATCHLIST = os.environ.get("SOCIAL_WATCHLIST", ",".join(NIFTY50_SYMBOLS))
 POLL_INTERVAL = int(os.environ.get("SOCIAL_POLL_INTERVAL", "120"))
 MAX_BACKOFF = int(os.environ.get("SOCIAL_MAX_BACKOFF", "300"))
 STREAM_KEY = "social:stream"

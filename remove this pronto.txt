@@ -1,0 +1,7 @@
+ALPHA_VANTAGE_KEY=CCUJHSVZWL22VH5S
+NEWS_API_KEY=f19790545c3a4dacbbba124ba9680f6a
+VITE_SUPABASE_URL=https://etbqesgiyfwyqlmgxvmr.supabase.co
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_Af9jteY67332_oLTMSrLKw_H__lxpij
+render-Internal-Key-Value-URL=redis://red-d77khmtm5p6s738ctjbg:6379
+DATABASE_URL=postgresql://postgres:271supabase271@db.etbqesgiyfwyqlmgxvmr.supabase.co:5432/postgres
+JWT_SECRET=

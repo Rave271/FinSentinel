@@ -49,35 +49,35 @@ Skipped — insufficient historical data on free tier to compute meaningful velo
 
 ## Phase 4 — Explainability (XAI) layer
 
-- [ ] Integrate SHAP TreeExplainer on trained XGBoost model
-- [ ] Build explanation template engine: convert SHAP values → natural language strings
-- [ ] Pre-compute SHAP values async and cache in Redis (avoid latency on request path)
-- [ ] Write unit tests for explanation output format
+- [x] Integrate SHAP TreeExplainer on trained XGBoost model
+- [x] Build explanation template engine: convert SHAP values → natural language strings
+- [x] Pre-compute SHAP values async and cache in Redis (avoid latency on request path)
+- [x] Write unit tests for explanation output format
 
 ## Phase 5 — FastAPI backend
 
-- [ ] Scaffold FastAPI app with CORS, JWT auth middleware, rate limiting
-- [ ] Implement GET /api/signal/{ticker} endpoint
-- [ ] Implement GET /api/news/{ticker} endpoint
-- [ ] Implement POST /api/portfolio/analyze endpoint
-- [ ] Implement GET /api/divergence/{ticker} endpoint
-- b  [ ] Implement WS /ws/live/{ticker} WebSocket endpoint with 60s push
-- [ ] Integrate APScheduler inside FastAPI for periodic data polling workers
+- [x] Scaffold FastAPI app with CORS, JWT auth middleware, rate limiting
+- [x] Implement GET /api/signal/{ticker} endpoint
+- [x] Implement GET /api/news/{ticker} endpoint
+- [x] Implement POST /api/portfolio/analyze endpoint
+- [x] Implement GET /api/divergence/{ticker} endpoint
+- [x] Implement WS /ws/live/{ticker} WebSocket endpoint with 60s push
+- [x] Integrate APScheduler inside FastAPI for periodic data polling workers
 - [ ] Connect to Supabase via DATABASE_URL, run initial schema migrations
-- [ ] Write Pytest integration tests for all endpoints
+- [x] Write Pytest integration tests for all endpoints
 
 ## Phase 6 — React frontend
 
-- [ ] Scaffold React + TypeScript app, configure Vercel deployment
-- [ ] Build ticker search bar with live suggestions
-- [ ] Build signal card component (BUY/HOLD/SELL badge + confidence %)
-- [ ] Build SHAP explanation bar chart using Recharts
-- [ ] Build live price + sentiment dual-axis chart (Recharts)
-- [ ] Build news feed panel with per-article sentiment colour coding
-- [ ] Build portfolio input form and personalized risk dashboard
-- [ ] Build divergence alerts panel (red flag when sentiment ≠ price direction)
-- [ ] Connect all components to FastAPI via REST + WebSocket
-- [ ] Ensure full dark mode compatibility across all components
+- [x] Scaffold React + TypeScript app, configure Vercel deployment
+- [x] Build ticker search bar with live suggestions
+- [x] Build signal card component (BUY/HOLD/SELL badge + confidence %)
+- [x] Build SHAP explanation bar chart using Recharts
+- [x] Build live price + sentiment dual-axis chart (Recharts)
+- [x] Build news feed panel with per-article sentiment colour coding
+- [x] Build portfolio input form and personalized risk dashboard
+- [x] Build divergence alerts panel (red flag when sentiment ≠ price direction)
+- [x] Connect all components to FastAPI via REST + WebSocket
+- [x] Ensure full dark mode compatibility across all components
 
 ## Phase 7 — Deployment & demo prep
 

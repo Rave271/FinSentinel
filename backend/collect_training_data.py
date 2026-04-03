@@ -3,27 +3,23 @@ import csv
 import json
 import os
 import time
+import datetime as dt
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-TICKERS = [
-    "RELIANCE",
-    "INFY",
-    "TCS",
-    "HDFCBANK",
-    "ICICIBANK",
-    "WIPRO",
-    "AXISBANK",
-    "SBIN",
-    "LT",
-    "BAJFINANCE",
-]
+from app.universe import NIFTY50_SYMBOLS
+
+
+TICKERS = NIFTY50_SYMBOLS
 
 REQUEST_DELAY_SECONDS = 12
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data" / "historical"
 DEFAULT_OUTPUTSIZE = os.environ.get("ALPHA_VANTAGE_OUTPUTSIZE", "compact")
 MARKET_SUFFIX = ".BSE"
+YAHOO_MARKET_SUFFIX = ".NS"
+YAHOO_RANGE = os.environ.get("YAHOO_RANGE", "2y")
+YAHOO_INTERVAL = os.environ.get("YAHOO_INTERVAL", "1d")
 
 
 def load_env_file(path):
@@ -52,6 +48,74 @@ def fetch_daily_series(api_key, ticker, outputsize="full"):
     with urllib.request.urlopen(url, timeout=30) as response:
         payload = json.load(response)
     return payload
+
+
+def fetch_yahoo_daily_series(ticker):
+    symbol = f"{ticker}{YAHOO_MARKET_SUFFIX}"
+    encoded_symbol = urllib.parse.quote(symbol, safe="")
+    params = urllib.parse.urlencode(
+        {
+            "range": YAHOO_RANGE,
+            "interval": YAHOO_INTERVAL,
+            "includePrePost": "false",
+            "events": "div,splits",
+        }
+    )
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_symbol}?{params}"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def parse_yahoo_chart_payload(payload):
+    chart = payload.get("chart", {})
+    if chart.get("error"):
+        raise RuntimeError(f"Yahoo Finance error: {chart['error']}")
+
+    results = chart.get("result") or []
+    if not results:
+        raise RuntimeError(f"Yahoo Finance returned no result: {payload}")
+
+    result = results[0]
+    timestamps = result.get("timestamp") or []
+    indicators = result.get("indicators", {})
+    quotes = (indicators.get("quote") or [{}])[0]
+    opens = quotes.get("open") or []
+    highs = quotes.get("high") or []
+    lows = quotes.get("low") or []
+    closes = quotes.get("close") or []
+    volumes = quotes.get("volume") or []
+
+    series = {}
+    for index, timestamp in enumerate(timestamps):
+        if index >= len(closes):
+            continue
+        if None in (
+            opens[index] if index < len(opens) else None,
+            highs[index] if index < len(highs) else None,
+            lows[index] if index < len(lows) else None,
+            closes[index] if index < len(closes) else None,
+            volumes[index] if index < len(volumes) else None,
+        ):
+            continue
+        date_value = dt.datetime.fromtimestamp(int(timestamp), tz=dt.timezone.utc).date().isoformat()
+        series[date_value] = {
+            "1. open": opens[index],
+            "2. high": highs[index],
+            "3. low": lows[index],
+            "4. close": closes[index],
+            "5. volume": volumes[index],
+        }
+
+    if not series:
+        raise RuntimeError("Yahoo Finance payload contained no valid OHLCV rows")
+    return series
 
 
 def write_daily_csv(ticker, series):
@@ -94,17 +158,19 @@ def main():
     print(f"fetching {len(tickers_to_fetch)} missing tickers")
     for index, ticker in enumerate(tickers_to_fetch):
         print(f"[{index + 1}/{len(tickers_to_fetch)}] fetching {ticker}")
-        payload = fetch_daily_series(api_key, ticker, outputsize=DEFAULT_OUTPUTSIZE)
-        if "Error Message" in payload:
-            raise RuntimeError(f"Alpha Vantage error for {ticker}: {payload['Error Message']}")
-        if "Note" in payload:
-            raise RuntimeError(f"Alpha Vantage rate limit note for {ticker}: {payload['Note']}")
-        if "Information" in payload:
-            raise RuntimeError(f"Alpha Vantage info for {ticker}: {payload['Information']}")
+        series = None
+        alpha_payload = fetch_daily_series(api_key, ticker, outputsize=DEFAULT_OUTPUTSIZE)
+        if "Error Message" in alpha_payload:
+            print(f"Alpha Vantage error for {ticker}; trying Yahoo Finance fallback")
+        elif "Note" in alpha_payload or "Information" in alpha_payload:
+            print(f"Alpha Vantage rate limit hit for {ticker}; trying Yahoo Finance fallback")
+        else:
+            series = alpha_payload.get("Time Series (Daily)")
 
-        series = payload.get("Time Series (Daily)")
         if not series:
-            raise RuntimeError(f"Missing daily series for {ticker}: {payload}")
+            yahoo_payload = fetch_yahoo_daily_series(ticker)
+            series = parse_yahoo_chart_payload(yahoo_payload)
+            print(f"Yahoo Finance fallback succeeded for {ticker}")
 
         output_path = write_daily_csv(ticker, series)
         print(f"saved {ticker} -> {output_path}")
