@@ -4,7 +4,6 @@ from typing import List
 
 from . import explainability
 from .universe import NIFTY50_SYMBOLS
-from .workers import news_worker, social_worker
 
 try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -30,6 +29,8 @@ async def warm_explanations_job():
 
 
 def poll_news_once():
+    from .workers import news_worker
+
     rows = news_worker.read_articles()
     if not rows:
         return
@@ -38,6 +39,8 @@ def poll_news_once():
 
 
 def poll_social_once():
+    from .workers import social_worker
+
     cycle_rows = []
     for ticker in social_worker.get_watchlist():
         cycle_rows.extend(social_worker.fetch_ticker_news(ticker))

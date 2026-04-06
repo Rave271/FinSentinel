@@ -4,9 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
-import torch
-from scipy.special import softmax
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import numpy as np
 
 DEFAULT_MODEL_PATH = str(
     Path(__file__).resolve().parent.parent / "models" / "finbert-finetuned"
@@ -26,14 +24,20 @@ SENTIMENT_TTL_SECONDS = 5 * 60
 
 @dataclass
 class FinBERTSentimentPipeline:
-    tokenizer: AutoTokenizer
-    model: AutoModelForSequenceClassification
-    device: torch.device
+    tokenizer: object
+    model: object
+    device: object
 
     @classmethod
     def load(cls) -> "FinBERTSentimentPipeline":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model_name = resolve_model_name()
+        try:
+            import torch
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        except Exception:
+            raise RuntimeError("transformers runtime is unavailable")
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
         model.to(device)
@@ -54,10 +58,12 @@ class FinBERTSentimentPipeline:
         )
         encoded = {key: value.to(self.device) for key, value in encoded.items()}
 
+        import torch
+
         with torch.no_grad():
             logits = self.model(**encoded).logits.detach().cpu().numpy()
 
-        probabilities = softmax(logits, axis=1)
+        probabilities = _softmax(logits)
         results = []
         for text, probs in zip(cleaned, probabilities):
             positive = float(probs[0])
@@ -70,6 +76,41 @@ class FinBERTSentimentPipeline:
                     "text": text,
                     "sentiment_label": sentiment_label,
                     "sentiment_score": round(sentiment_score, 4),
+                }
+            )
+        return results
+
+
+class HeuristicSentimentPipeline:
+    POSITIVE_TERMS = {
+        "beat", "gain", "growth", "bullish", "rally", "surge", "strong", "upgrade",
+        "buy", "outperform", "profit", "profits", "record", "expansion", "optimistic"
+    }
+    NEGATIVE_TERMS = {
+        "miss", "loss", "drop", "fall", "bearish", "slump", "weak", "downgrade",
+        "sell", "underperform", "risk", "fraud", "decline", "cut", "cuts", "warning"
+    }
+
+    def score(self, texts: List[str]) -> List[Dict]:
+        results = []
+        for raw_text in texts:
+            text = raw_text if isinstance(raw_text, str) else ""
+            lower = text.lower()
+            positive_hits = sum(term in lower for term in self.POSITIVE_TERMS)
+            negative_hits = sum(term in lower for term in self.NEGATIVE_TERMS)
+            raw_score = positive_hits - negative_hits
+            sentiment_score = max(-1.0, min(1.0, raw_score / 4.0))
+            if sentiment_score > 0.1:
+                label = "positive"
+            elif sentiment_score < -0.1:
+                label = "negative"
+            else:
+                label = "neutral"
+            results.append(
+                {
+                    "text": text,
+                    "sentiment_label": label,
+                    "sentiment_score": round(float(sentiment_score), 4),
                 }
             )
         return results
@@ -95,8 +136,17 @@ def resolve_model_name() -> str:
 def get_pipeline() -> FinBERTSentimentPipeline:
     global _PIPELINE
     if _PIPELINE is None:
-        _PIPELINE = FinBERTSentimentPipeline.load()
+        try:
+            _PIPELINE = FinBERTSentimentPipeline.load()
+        except Exception:
+            _PIPELINE = HeuristicSentimentPipeline()
     return _PIPELINE
+
+
+def _softmax(logits):
+    shifted = logits - np.max(logits, axis=1, keepdims=True)
+    exp_values = np.exp(shifted)
+    return exp_values / np.sum(exp_values, axis=1, keepdims=True)
 
 
 def score_texts(texts: List[str]) -> List[Dict]:

@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+
+frontend/node_modules/
+frontend/dist/
+
+data/historical/
+data/news_headlines.csv
+data/price_quotes.csv
+data/scored_headlines.csv
+
+backend/models/finbert-finetuned/
