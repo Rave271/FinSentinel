@@ -11,6 +11,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 DEFAULT_MODEL_PATH = str(
     Path(__file__).resolve().parent.parent / "models" / "finbert-finetuned"
 )
+FALLBACK_MODEL_NAME = "ProsusAI/finbert"
 MODEL_NAME = os.environ.get("FINBERT_MODEL_NAME", DEFAULT_MODEL_PATH)
 MAX_LEN = int(os.environ.get("FINBERT_MAX_LEN", "512"))
 
@@ -32,8 +33,9 @@ class FinBERTSentimentPipeline:
     @classmethod
     def load(cls) -> "FinBERTSentimentPipeline":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+        model_name = resolve_model_name()
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
         model.to(device)
         model.eval()
         return cls(tokenizer=tokenizer, model=model, device=device)
@@ -74,6 +76,20 @@ class FinBERTSentimentPipeline:
 
 
 _PIPELINE = None
+
+
+def resolve_model_name() -> str:
+    configured = MODEL_NAME.strip()
+    if not configured:
+        return FALLBACK_MODEL_NAME
+
+    candidate = Path(configured)
+    if candidate.is_absolute() or configured.startswith(".") or "/" in configured:
+        if candidate.exists():
+            return str(candidate)
+        return FALLBACK_MODEL_NAME
+
+    return configured
 
 
 def get_pipeline() -> FinBERTSentimentPipeline:
