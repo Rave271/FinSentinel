@@ -20,6 +20,9 @@ node_modules/
 
 # Local model artifacts
 backend/models/
+!backend/models/
+backend/models/*
+!backend/models/xgboost_signal_model.joblib
 
 # Generated local data
 data/news_headlines.csv
