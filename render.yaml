@@ -19,7 +19,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ENABLE_BACKGROUND_WORKERS
-        value: "1"
+        value: "0"
       - key: ALLOW_DEV_AUTH_TOKENS
         value: "0"
       - key: RATE_LIMIT_MAX_REQUESTS
