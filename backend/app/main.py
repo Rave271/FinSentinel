@@ -50,6 +50,7 @@ CORS_ORIGINS = list(
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "finsentinel_session")
 SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
 SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "lax").strip().lower()
 
 rate_limiter = InMemoryRateLimiter()
 scheduler = build_scheduler()
@@ -203,6 +204,28 @@ def issue_dev_token(subject: str = "demo-user", role: str = "demo"):
     return {"access_token": create_access_token(subject=subject, role=role), "token_type": "bearer"}
 
 
+@app.post("/api/auth/guest")
+def guest_login():
+    guest_email = "guest@finsentinel.local"
+    guest_user = storage.get_user_by_email(guest_email)
+    if guest_user is None:
+      guest_user = storage.create_user(email=guest_email, password_hash=hash_password(generate_session_token()), role="guest")
+
+    raw_token = generate_session_token()
+    storage.create_session(user_id=guest_user["id"], token_hash=hash_session_token(raw_token), ttl_seconds=SESSION_TTL_SECONDS)
+
+    response = JSONResponse(content={"id": guest_user["id"], "email": guest_user["email"], "role": guest_user["role"]})
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=raw_token,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
+        samesite=SESSION_COOKIE_SAMESITE,
+        max_age=SESSION_TTL_SECONDS,
+    )
+    return response
+
+
 @app.post("/api/auth/register")
 def register(payload: RegisterPayload):
     email = payload.email.strip().lower()
@@ -235,7 +258,7 @@ def login(payload: LoginPayload):
         value=raw_token,
         httponly=True,
         secure=SESSION_COOKIE_SECURE,
-        samesite="lax",
+        samesite=SESSION_COOKIE_SAMESITE,
         max_age=SESSION_TTL_SECONDS,
     )
     return response

@@ -22,8 +22,9 @@ export interface MeResponse {
 }
 
 export interface GuestAuthResponse {
-  access_token: string;
-  token_type: string;
+  id: number;
+  email: string;
+  role: string;
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
@@ -77,5 +78,7 @@ export async function me(): Promise<MeResponse> {
 }
 
 export async function guestLogin(): Promise<GuestAuthResponse> {
-  return authRequest<GuestAuthResponse>("/api/auth/dev-token?subject=frontend-demo&role=guest");
+  return authRequest<GuestAuthResponse>("/api/auth/guest", {
+    method: "POST",
+  });
 }

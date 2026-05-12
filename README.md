@@ -107,6 +107,10 @@ Backend:
 - `JWT_SECRET`
 - `NEWS_API_KEY`
 - `ALPHA_VANTAGE_KEY`
+- `FRONTEND_URL`
+- `CORS_ORIGINS`
+- `SESSION_COOKIE_SECURE=1` in production
+- `SESSION_COOKIE_SAMESITE=none` in production
 
 Frontend:
 
@@ -127,6 +131,8 @@ Deploy flow:
 4. After the web service is live, verify `https://<your-render-url>/api/health`.
 
 Note: the Render backend URL is API-first. If you open `https://<your-render-url>/`, it will not serve the React bundle unless you host frontend assets there yourself. Set `FRONTEND_URL` on Render if you want `/` on the backend URL to redirect to your Vercel frontend.
+
+For browser login to work cross-origin, include the Vercel origin in `CORS_ORIGINS` and use `SESSION_COOKIE_SAMESITE=none` with `SESSION_COOKIE_SECURE=1` on Render.
 
 The backend Docker image reads `PORT` automatically, so the same image works both locally and on Render.
 

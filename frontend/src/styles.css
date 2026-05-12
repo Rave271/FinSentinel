@@ -819,6 +819,10 @@ html {
   .auth-actions {
     grid-template-columns: 1fr;
   }
+
+  .auth-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Auth Page Styles */

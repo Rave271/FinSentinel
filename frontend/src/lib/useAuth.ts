@@ -74,10 +74,10 @@ export function useAuth() {
     setLoading(true);
     setError(null);
     try {
-      await authService.guestLogin();
+      const response = await authService.guestLogin();
       setUser({
-        email: "guest@finsentinel.local",
-        role: "guest",
+        email: response.email,
+        role: response.role,
       });
       return true;
     } catch (err) {
