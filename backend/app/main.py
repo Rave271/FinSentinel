@@ -229,13 +229,24 @@ def issue_dev_token(subject: str = "demo-user", role: str = "demo"):
 
 @app.post("/api/auth/guest")
 def guest_login():
-    guest_email = "guest@finsentinel.local"
-    guest_user = storage.get_user_by_email(guest_email)
-    if guest_user is None:
-      guest_user = storage.create_user(email=guest_email, password_hash=hash_password(generate_session_token()), role="guest")
+    try:
+        guest_email = "guest@finsentinel.local"
+        guest_user = storage.get_user_by_email(guest_email)
+        if guest_user is None:
+            guest_user = storage.create_user(
+                email=guest_email,
+                password_hash=hash_password(generate_session_token()),
+                role="guest",
+            )
 
-    raw_token = generate_session_token()
-    storage.create_session(user_id=guest_user["id"], token_hash=hash_session_token(raw_token), ttl_seconds=SESSION_TTL_SECONDS)
+        raw_token = generate_session_token()
+        storage.create_session(
+            user_id=guest_user["id"],
+            token_hash=hash_session_token(raw_token),
+            ttl_seconds=SESSION_TTL_SECONDS,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     response = JSONResponse(content={"id": guest_user["id"], "email": guest_user["email"], "role": guest_user["role"]})
     response.set_cookie(
