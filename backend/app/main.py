@@ -101,6 +101,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def auth_and_rate_limit_middleware(request: Request, call_next):
+    # Allow OPTIONS preflight requests to pass through without auth/rate-limit checks
+    # so CORS headers can be added by CORSMiddleware
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     if request.url.path.startswith("/api/") and request.url.path != "/api/health":
         client_host = request.client.host if request.client else "anonymous"
         key = f"{client_host}:{request.url.path}"
