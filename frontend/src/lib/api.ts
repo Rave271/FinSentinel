@@ -6,9 +6,10 @@ import type {
   PortfolioResponse,
   SignalResponse
 } from "../types";
+import { resolveApiBaseUrl } from "./baseUrl";
 
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE_URL = resolveApiBaseUrl();
 
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

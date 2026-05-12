@@ -1,3 +1,5 @@
+import { resolveApiBaseUrl } from "./baseUrl";
+
 export interface User {
   id: number;
   email: string;
@@ -27,7 +29,7 @@ export interface GuestAuthResponse {
   role: string;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
