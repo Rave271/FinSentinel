@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
-import { analyzePortfolio, fetchDevToken } from "../lib/api";
+import { analyzePortfolio, analyzePortfolioSession, fetchDevToken } from "../lib/api";
 import type { PortfolioHoldingInput, PortfolioResponse } from "../types";
-
 
 interface PortfolioAnalyzerProps {
   seedTicker: string;
   suggestions: string[];
   onAnalysis: (portfolio: PortfolioResponse | null) => void;
+  isAuthenticated?: boolean;
 }
 
 interface DraftHolding {
@@ -16,8 +16,7 @@ interface DraftHolding {
   average_cost: string;
 }
 
-
-export function PortfolioAnalyzer({ seedTicker, suggestions, onAnalysis }: PortfolioAnalyzerProps) {
+export function PortfolioAnalyzer({ seedTicker, suggestions, onAnalysis, isAuthenticated = false }: PortfolioAnalyzerProps) {
   const [rows, setRows] = useState<DraftHolding[]>([{ ticker: seedTicker, quantity: "8", average_cost: "1500" }]);
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState("Ready to analyze.");
@@ -58,16 +57,24 @@ export function PortfolioAnalyzer({ seedTicker, suggestions, onAnalysis }: Portf
     }
 
     setLoading(true);
-    setStatus("Requesting a dev token and scoring the portfolio...");
 
     try {
-      let activeToken = token;
-      if (!activeToken) {
-        const auth = await fetchDevToken();
-        activeToken = auth.access_token;
-        setToken(activeToken);
+      let result;
+      
+      if (isAuthenticated) {
+        setStatus("Analyzing your portfolio...");
+        result = await analyzePortfolioSession(holdings);
+      } else {
+        setStatus("Requesting a dev token and scoring the portfolio...");
+        let activeToken = token;
+        if (!activeToken) {
+          const auth = await fetchDevToken();
+          activeToken = auth.access_token;
+          setToken(activeToken);
+        }
+        result = await analyzePortfolio(activeToken, holdings);
       }
-      const result = await analyzePortfolio(activeToken, holdings);
+      
       onAnalysis(result);
       setStatus(`Risk layer updated for ${result.portfolio_size} holdings.`);
     } catch (error) {

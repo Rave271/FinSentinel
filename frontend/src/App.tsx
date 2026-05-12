@@ -1,5 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
+import { AuthPage } from "./components/Auth";
 import { DivergenceAlerts } from "./components/DivergenceAlerts";
 import { LivePulseChart } from "./components/LivePulseChart";
 import { NewsFeedPanel } from "./components/NewsFeedPanel";
@@ -8,6 +9,7 @@ import { ShapFactorsChart } from "./components/ShapFactorsChart";
 import { SignalCard } from "./components/SignalCard";
 import { TickerSearch } from "./components/TickerSearch";
 import { TICKERS } from "./data/tickers";
+import { useAuth } from "./lib/useAuth";
 import { buildWebsocketUrl, fetchDivergence, fetchNews, fetchSignal, type LivePayload } from "./lib/api";
 import type { DivergenceSnapshot, NewsItem, PortfolioResponse, SignalResponse, ThemeMode } from "./types";
 
@@ -83,8 +85,8 @@ function connectionLabel(connectionState: string) {
   }
 }
 
-
 export default function App() {
+  const auth = useAuth();
   const [theme, setTheme] = useState<ThemeMode>(() => detectTheme());
   const [query, setQuery] = useState("INFY");
   const [selectedTicker, setSelectedTicker] = useState("INFY");
@@ -102,6 +104,10 @@ export default function App() {
   const compositeSentiment = signal
     ? Number(((signal.sentiment.news + signal.sentiment.social) / 2).toFixed(3))
     : null;
+
+  if (!auth.user) {
+    return <AuthPage onAuth={auth} />;
+  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -206,13 +212,15 @@ export default function App() {
         </div>
         <div className="topnav" aria-label="Primary">
           <span>Overview</span>
-          <span>Signals</span>
-          <span>Portfolio</span>
         </div>
         <div className="topbar-actions">
           <div className={`status-indicator ${connectionState}`}>Feed {connectionLabel(connectionState)}</div>
+          <span className="user-info">{auth.user?.email}</span>
           <button className="theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+          <button className="secondary-button" onClick={() => auth.logout()}>
+            Logout
           </button>
         </div>
       </header>
@@ -294,7 +302,7 @@ export default function App() {
             <LivePulseChart points={livePoints} connectionState={connectionState} />
             <NewsFeedPanel items={news} />
             <DivergenceAlerts ticker={selectedTicker} selected={divergence} portfolio={portfolio} />
-            <PortfolioAnalyzer seedTicker={selectedTicker} suggestions={TICKERS} onAnalysis={setPortfolio} />
+            <PortfolioAnalyzer seedTicker={selectedTicker} suggestions={TICKERS} onAnalysis={setPortfolio} isAuthenticated={!!auth.user} />
 
             <section className="glass-card notes-card">
               <div className="panel-header">

@@ -13,6 +13,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").r
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {})
@@ -75,6 +76,13 @@ export function analyzePortfolio(token: string, holdings: PortfolioHoldingInput[
     headers: {
       Authorization: `Bearer ${token}`
     },
+    body: JSON.stringify({ holdings })
+  });
+}
+
+export function analyzePortfolioSession(holdings: PortfolioHoldingInput[]) {
+  return request<PortfolioResponse>("/api/portfolio/analyze", {
+    method: "POST",
     body: JSON.stringify({ holdings })
   });
 }
