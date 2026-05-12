@@ -4,7 +4,6 @@ import json
 import urllib.parse
 import urllib.request
 import sys
-import csv
 
 
 def load_env_file(path):
@@ -36,15 +35,6 @@ def fetch_global_quote(api_key, symbol):
     return data
 
 
-def write_csv(row, out_path):
-    exists = os.path.exists(out_path)
-    with open(out_path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if not exists:
-            writer.writerow(["symbol", "price", "volume", "timestamp"])
-        writer.writerow([row.get("symbol"), row.get("price"), row.get("volume"), row.get("timestamp")])
-
-
 def main():
     symbol = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
     repo_root = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
@@ -62,10 +52,10 @@ def main():
     volume = quote.get("06. volume")
     timestamp = quote.get("07. latest trading day")
 
-    out = {"symbol": symbol, "price": price, "volume": volume, "timestamp": timestamp}
-    out_path = os.path.join(repo_root, "data", "price_quotes.csv")
-    write_csv(out, out_path)
-    print(f"Wrote quote for {symbol} to {out_path}")
+    from app import storage
+
+    storage.insert_price_quote(symbol=symbol, price=price, volume=volume, timestamp=timestamp)
+    print(f"Inserted quote for {symbol} into database")
     return 0
 
 

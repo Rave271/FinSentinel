@@ -1,8 +1,7 @@
-import csv
 import os
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Dict, Iterable, List
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Iterable, List, Optional
 
 from . import config  # noqa: F401  Loads repo .env before DATABASE_URL is read.
 
@@ -12,9 +11,6 @@ except ImportError:  # pragma: no cover - exercised when postgres extras are una
     psycopg2 = None
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-NEWS_PATH = REPO_ROOT / "data" / "news_headlines.csv"
-PRICE_PATH = REPO_ROOT / "data" / "price_quotes.csv"
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
@@ -50,89 +46,253 @@ def database_health() -> Dict:
         return {"configured": True, "healthy": False, "error": str(exc)}
 
 
-def _normalize_csv_rows(path: Path, field_names: List[str]) -> List[Dict]:
-    if not path.exists():
-        return []
+def _require_database() -> None:
+    if not database_configured():
+        raise RuntimeError("Database storage is required; set DATABASE_URL and install psycopg2")
 
-    with open(path, newline="", encoding="utf-8") as handle:
-        rows = list(csv.reader(handle))
 
-    if not rows:
-        return []
+def _iso(value):
+    return value.isoformat() if value is not None else ""
 
-    first_row = [cell.strip().lower() for cell in rows[0]]
-    normalized_fields = [name.lower() for name in field_names]
-    start_index = 1 if first_row[: len(normalized_fields)] == normalized_fields else 0
 
-    normalized = []
-    for raw_row in rows[start_index:]:
-        if not any(cell.strip() for cell in raw_row):
-            continue
-        record = {field: (raw_row[index].strip() if index < len(raw_row) else "") for index, field in enumerate(field_names)}
-        normalized.append(record)
-    return normalized
+def load_headlines(limit: int = 50) -> List[Dict]:
+    _require_database()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, headline, source, published_at, sentiment_score
+                FROM headlines
+                ORDER BY published_at DESC NULLS LAST, id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+    return [
+        {
+            "id": row[0],
+            "headline": row[1],
+            "source": row[2] or "",
+            "published_at": _iso(row[3]),
+            "sentiment_score": float(row[4]) if row[4] is not None else None,
+        }
+        for row in rows
+    ]
 
 
 def load_news_articles(limit: int = 50) -> List[Dict]:
-    if database_configured():
-        try:
-            with get_connection() as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT id, title, source, published_at, url, sentiment_score
-                        FROM news_articles
-                        ORDER BY published_at DESC NULLS LAST
-                        LIMIT %s
-                        """,
-                        (limit,),
-                    )
-                    rows = cursor.fetchall()
-            return [
-                {
-                    "id": row[0],
-                    "headline": row[1],
-                    "source": row[2],
-                    "published_at": row[3].isoformat() if row[3] else "",
-                    "url": row[4],
-                    "sentiment_score": float(row[5]) if row[5] is not None else None,
-                }
-                for row in rows
-            ]
-        except Exception:
-            pass
-
-    return _normalize_csv_rows(NEWS_PATH, ["id", "headline", "source", "published_at", "url"])[:limit]
+    _require_database()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, title, source, published_at, url, sentiment_score
+                FROM news_articles
+                ORDER BY published_at DESC NULLS LAST, id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+    return [
+        {
+            "id": row[0],
+            "headline": row[1],
+            "source": row[2] or "",
+            "published_at": _iso(row[3]),
+            "url": row[4] or "",
+            "sentiment_score": float(row[5]) if row[5] is not None else None,
+        }
+        for row in rows
+    ]
 
 
 def load_price_quotes(limit: int = 50) -> List[Dict]:
-    if database_configured():
-        try:
-            with get_connection() as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        SELECT symbol, price, volume, timestamp
-                        FROM price_quotes
-                        ORDER BY timestamp DESC NULLS LAST
-                        LIMIT %s
-                        """,
-                        (limit,),
-                    )
-                    rows = cursor.fetchall()
-            return [
-                {
-                    "symbol": row[0],
-                    "price": float(row[1]) if row[1] is not None else None,
-                    "volume": int(row[2]) if row[2] is not None else None,
-                    "timestamp": row[3].isoformat() if row[3] else "",
-                }
-                for row in rows
-            ]
-        except Exception:
-            pass
+    _require_database()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT symbol, price, volume, timestamp
+                FROM price_quotes
+                ORDER BY timestamp DESC NULLS LAST, id DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+    return [
+        {
+            "symbol": row[0],
+            "price": float(row[1]) if row[1] is not None else None,
+            "volume": int(row[2]) if row[2] is not None else None,
+            "timestamp": _iso(row[3]),
+        }
+        for row in rows
+    ]
 
-    return _normalize_csv_rows(PRICE_PATH, ["symbol", "price", "volume", "timestamp"])[:limit]
+
+def insert_news_articles(rows: List[Dict]) -> int:
+    _require_database()
+    if not rows:
+        return 0
+
+    payload = []
+    for row in rows:
+        payload.append(
+            (
+                row.get("external_id"),
+                row.get("headline") or row.get("title") or "",
+                row.get("source"),
+                row.get("url"),
+                row.get("published_at") or row.get("publishedAt") or None,
+                row.get("sentiment_score"),
+            )
+        )
+
+    with get_connection() as connection:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO news_articles (external_id, title, source, url, published_at, sentiment_score)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    payload,
+                )
+    return len(payload)
+
+
+def insert_price_quote(symbol: str, price, volume, timestamp) -> None:
+    _require_database()
+    with get_connection() as connection:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO price_quotes (symbol, price, volume, timestamp)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (symbol, price, volume, timestamp),
+                )
+
+
+def create_user(email: str, password_hash: str, role: str = "user") -> Dict:
+    _require_database()
+    with get_connection() as connection:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO app_users (email, password_hash, role)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, email, role, created_at
+                    """,
+                    (email, password_hash, role),
+                )
+                row = cursor.fetchone()
+    return {
+        "id": row[0],
+        "email": row[1],
+        "role": row[2],
+        "created_at": _iso(row[3]),
+    }
+
+
+def get_user_by_email(email: str) -> Optional[Dict]:
+    _require_database()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, email, password_hash, role, created_at
+                FROM app_users
+                WHERE email = %s
+                """,
+                (email,),
+            )
+            row = cursor.fetchone()
+    if row is None:
+        return None
+    return {
+        "id": row[0],
+        "email": row[1],
+        "password_hash": row[2],
+        "role": row[3],
+        "created_at": _iso(row[4]),
+    }
+
+
+def create_session(user_id: int, token_hash: str, ttl_seconds: int) -> Dict:
+    _require_database()
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    with get_connection() as connection:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO app_sessions (user_id, token_hash, expires_at)
+                    VALUES (%s, %s, %s)
+                    RETURNING id, user_id, expires_at, created_at
+                    """,
+                    (user_id, token_hash, expires_at),
+                )
+                row = cursor.fetchone()
+    return {
+        "id": row[0],
+        "user_id": row[1],
+        "expires_at": _iso(row[2]),
+        "created_at": _iso(row[3]),
+    }
+
+
+def get_active_session(token_hash: str) -> Optional[Dict]:
+    _require_database()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    s.id,
+                    s.user_id,
+                    s.expires_at,
+                    u.email,
+                    u.role
+                FROM app_sessions s
+                JOIN app_users u ON u.id = s.user_id
+                WHERE s.token_hash = %s
+                    AND s.revoked_at IS NULL
+                    AND s.expires_at > NOW()
+                """,
+                (token_hash,),
+            )
+            row = cursor.fetchone()
+    if row is None:
+        return None
+    return {
+        "session_id": row[0],
+        "user_id": row[1],
+        "expires_at": _iso(row[2]),
+        "email": row[3],
+        "role": row[4],
+    }
+
+
+def revoke_session(token_hash: str) -> bool:
+    _require_database()
+    with get_connection() as connection:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE app_sessions
+                    SET revoked_at = NOW()
+                    WHERE token_hash = %s AND revoked_at IS NULL
+                    """,
+                    (token_hash,),
+                )
+                return cursor.rowcount > 0
 
 
 def filter_rows_for_ticker(rows: Iterable[Dict], ticker: str) -> List[Dict]:

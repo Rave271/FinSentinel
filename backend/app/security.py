@@ -3,10 +3,13 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 from collections import defaultdict, deque
 from threading import Lock
 from typing import Deque, Dict, Optional
+
+import bcrypt
 
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "finsentinel-dev-secret")
@@ -78,6 +81,25 @@ def extract_bearer_token(authorization_header: Optional[str]) -> Optional[str]:
     if scheme.lower() != "bearer" or not token:
         return None
     return token.strip()
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def generate_session_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def hash_session_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 class InMemoryRateLimiter:

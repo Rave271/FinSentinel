@@ -1,39 +1,49 @@
 import asyncio
 import os
+
 from contextlib import asynccontextmanager
 
-import pandas as pd
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
 
 from . import config  # noqa: F401  Ensures repo .env is loaded before settings are read.
 from . import explainability, storage
 from .market import analyze_portfolio, build_divergence_snapshot, build_live_payload, build_news_feed, build_signal_snapshot
 from .scheduler import build_scheduler
-from .security import InMemoryRateLimiter, create_access_token, decode_access_token, extract_bearer_token
+from .security import (
+    InMemoryRateLimiter,
+    create_access_token,
+    decode_access_token,
+    extract_bearer_token,
+    generate_session_token,
+    hash_password,
+    hash_session_token,
+    verify_password,
+)
 from .sentiment import sentiment_score
 
 
-ROOT = os.path.dirname(os.path.dirname(__file__))
-SAMPLE_PATH = os.path.normpath(os.path.join(ROOT, "..", "data", "sample_headlines.csv"))
-NEWS_PATH = os.path.normpath(os.path.join(ROOT, "..", "data", "news_headlines.csv"))
 WS_PUSH_INTERVAL_SECONDS = float(os.environ.get("WS_PUSH_INTERVAL_SECONDS", "60"))
 ALLOW_DEV_AUTH_TOKENS = os.environ.get("ALLOW_DEV_AUTH_TOKENS", "1") == "1"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "").strip()
+SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "finsentinel_session")
+SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
 
 rate_limiter = InMemoryRateLimiter()
 scheduler = build_scheduler()
 
 
-def _load_csv(path, default_rows=None):
-    if os.path.exists(path):
-        try:
-            return pd.read_csv(path)
-        except Exception:
-            return pd.DataFrame(default_rows or [])
-    else:
-        return pd.DataFrame(default_rows or [])
+class RegisterPayload(BaseModel):
+    email: str
+    password: str
+
+
+class LoginPayload(BaseModel):
+    email: str
+    password: str
 
 
 def _requires_auth(request: Request) -> bool:
@@ -89,7 +99,22 @@ async def auth_and_rate_limit_middleware(request: Request, call_next):
         except ValueError:
             if _requires_auth(request):
                 return JSONResponse(status_code=401, content={"detail": "Invalid bearer token"})
-    elif _requires_auth(request):
+    else:
+        session_token = request.cookies.get(SESSION_COOKIE_NAME)
+        if session_token:
+            try:
+                session = storage.get_active_session(hash_session_token(session_token))
+            except Exception:
+                session = None
+            if session is not None:
+                request.state.user = {
+                    "sub": session["email"],
+                    "role": session["role"],
+                    "user_id": session["user_id"],
+                    "auth_type": "session",
+                }
+
+    if _requires_auth(request) and request.state.user is None:
         return JSONResponse(status_code=401, content={"detail": "Authentication required"})
 
     return await call_next(request)
@@ -137,8 +162,7 @@ def health():
 
 @app.get("/api/headlines")
 def list_headlines():
-    df = _load_csv(SAMPLE_PATH, default_rows=[{"id": 1, "headline": "No sample data found"}])
-    records = df.to_dict(orient="records")
+    records = storage.load_headlines(limit=50)
     for record in records:
         record["sentiment"] = sentiment_score(record.get("headline", ""))
     return JSONResponse(content=records)
@@ -158,6 +182,66 @@ def issue_dev_token(subject: str = "demo-user", role: str = "demo"):
     if not ALLOW_DEV_AUTH_TOKENS:
         raise HTTPException(status_code=404, detail="Developer auth tokens are disabled")
     return {"access_token": create_access_token(subject=subject, role=role), "token_type": "bearer"}
+
+
+@app.post("/api/auth/register")
+def register(payload: RegisterPayload):
+    email = payload.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(status_code=422, detail="A valid email is required")
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    existing = storage.get_user_by_email(email)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    user = storage.create_user(email=email, password_hash=hash_password(payload.password))
+    return {"id": user["id"], "email": user["email"], "role": user["role"]}
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginPayload):
+    email = payload.email.strip().lower()
+    user = storage.get_user_by_email(email)
+    if user is None or not verify_password(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    raw_token = generate_session_token()
+    storage.create_session(user_id=user["id"], token_hash=hash_session_token(raw_token), ttl_seconds=SESSION_TTL_SECONDS)
+
+    response = JSONResponse(content={"id": user["id"], "email": user["email"], "role": user["role"]})
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=raw_token,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
+        samesite="lax",
+        max_age=SESSION_TTL_SECONDS,
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request):
+    session_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if session_token:
+        try:
+            storage.revoke_session(hash_session_token(session_token))
+        except Exception:
+            pass
+
+    response = JSONResponse(content={"status": "logged_out"})
+    response.delete_cookie(SESSION_COOKIE_NAME)
+    return response
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return {"sub": user["sub"], "role": user.get("role", "user")}
 
 
 @app.get("/api/signal/{ticker}")
