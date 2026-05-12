@@ -31,6 +31,12 @@ function formatClock(timestamp: string) {
   if (!timestamp) {
     return "Now";
   }
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(timestamp);
+  if (isDateOnly) {
+    const [year, month, day] = timestamp.split("-").map((part) => Number(part));
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  }
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) {
     return "Now";
@@ -44,6 +50,12 @@ function formatClock(timestamp: string) {
 function formatDateTime(timestamp: string) {
   if (!timestamp) {
     return "Awaiting update";
+  }
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(timestamp);
+  if (isDateOnly) {
+    const [year, month, day] = timestamp.split("-").map((part) => Number(part));
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   }
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) {
@@ -256,6 +268,12 @@ export function DashboardPage() {
       </section>
 
       {error ? <div className="error-banner">{error}</div> : null}
+      {signal?.data_status?.age_days != null && signal.data_status.age_days > 3 ? (
+        <div className="loading-panel">
+          Data snapshot is {signal.data_status.age_days} days old (source: {signal.data_status.source}). Run the data
+          pipeline / refresh `data/training_features.csv` on the backend to see current dates.
+        </div>
+      ) : null}
       {loading && !signal ? <div className="loading-panel">Loading the market lens...</div> : null}
 
       {signal ? (
@@ -337,4 +355,3 @@ export function DashboardPage() {
     </div>
   );
 }
-

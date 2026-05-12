@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuthContext } from "../lib/authContext";
+import { Insignia } from "./Insignia";
 
 function joinClassNames(...items: Array<string | false | null | undefined>) {
   return items.filter(Boolean).join(" ");
@@ -13,13 +14,13 @@ export function SiteLayout() {
   return (
     <div className="site-shell">
       <header className="topbar">
-        <Link className="brand-lockup" to="/" aria-label="FinSentinel home">
-          <div className="brand-mark" aria-hidden="true">
-            FS
+        <Link className="brand-lockup" to="/" aria-label="Home">
+          <div className="brand-mark">
+            <Insignia title="FinSentinel" />
           </div>
           <div className="brand-copy">
-            <strong>FinSentinel</strong>
-            <span>signal intelligence for the NIFTY 50</span>
+            <strong>Signal desk</strong>
+            <span>NIFTY 50 intelligence</span>
           </div>
         </Link>
 
@@ -64,7 +65,7 @@ export function SiteLayout() {
       </main>
 
       <footer className="page-footer">
-        <span>FinSentinel — market sentiment, risk, and explainable signals.</span>
+        <span>Market sentiment, risk, and explainable signals.</span>
         <span className="footer-dot" aria-hidden="true">
           •
         </span>
@@ -73,4 +74,3 @@ export function SiteLayout() {
     </div>
   );
 }
-

@@ -1,6 +1,8 @@
 import os
 from typing import Dict, List, Optional
 
+from datetime import datetime, timezone
+
 from redis import Redis
 
 from . import explainability, sentiment, storage
@@ -77,9 +79,23 @@ def build_divergence_snapshot(ticker: str, redis_client=None) -> Dict:
     else:
         severity = "low"
 
+    feature_date = str(merged.get("date") or "")
+    age_days = None
+    try:
+        if feature_date:
+            parsed = datetime.strptime(feature_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            age_days = max(0, (datetime.now(timezone.utc) - parsed).days)
+    except Exception:
+        age_days = None
+
     return {
         "ticker": ticker.upper(),
         "as_of": merged.get("date"),
+        "data_status": {
+            "source": "training_features.csv",
+            "feature_date": feature_date,
+            "age_days": age_days,
+        },
         "price_delta_1d": round(_safe_float(merged.get("price_delta_1d")), 6),
         "price_delta_normalized": merged["price_delta_normalized"],
         "news_sentiment": round(_safe_float(merged.get("sentiment_news")), 4),
@@ -97,9 +113,23 @@ def build_signal_snapshot(ticker: str, redis_client=None) -> Dict:
     explanation = explainability.build_signal_explanation(ticker, merged)
     divergence = build_divergence_snapshot(ticker, redis_client=redis_client)
 
+    feature_date = str(merged.get("date") or "")
+    age_days = None
+    try:
+        if feature_date:
+            parsed = datetime.strptime(feature_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            age_days = max(0, (datetime.now(timezone.utc) - parsed).days)
+    except Exception:
+        age_days = None
+
     return {
         "ticker": ticker.upper(),
         "as_of": merged.get("date"),
+        "data_status": {
+            "source": "training_features.csv",
+            "feature_date": feature_date,
+            "age_days": age_days,
+        },
         "market": {
             "close": round(_safe_float(merged.get("close")), 4),
             "open": round(_safe_float(merged.get("open")), 4),

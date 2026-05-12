@@ -36,7 +36,7 @@ export function HomePage() {
     <section className="home-hero">
       <div className="home-hero-surface">
         <div className="home-hero-copy">
-          <span className="eyebrow">FinSentinel</span>
+          <span className="eyebrow">Market Intelligence</span>
           <h1>Creme marble UX for market signal ops.</h1>
           <p>
             A modern, explainable dashboard for NIFTY 50 signals: sentiment drift, factor drivers,
@@ -88,4 +88,3 @@ export function HomePage() {
     </section>
   );
 }
-

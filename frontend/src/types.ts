@@ -4,6 +4,12 @@ export type SignalLabel = "BUY" | "HOLD" | "SELL";
 export type SentimentLabel = "positive" | "negative" | "neutral";
 export type AlertSeverity = "low" | "medium" | "high";
 
+export interface DataStatus {
+  source: string;
+  feature_date: string;
+  age_days: number | null;
+}
+
 export interface SignalProbabilityMap {
   BUY: number;
   HOLD: number;
@@ -50,6 +56,7 @@ export interface Factor {
 export interface DivergenceSnapshot {
   ticker: string;
   as_of: string;
+  data_status?: DataStatus;
   price_delta_1d: number;
   price_delta_normalized: number;
   news_sentiment: number;
@@ -63,6 +70,7 @@ export interface DivergenceSnapshot {
 export interface SignalResponse {
   ticker: string;
   as_of: string;
+  data_status?: DataStatus;
   market: MarketSnapshot;
   sentiment: SentimentSnapshot;
   signal: SignalSummary;

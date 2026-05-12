@@ -22,6 +22,7 @@
   --accent-risk: rgba(172, 35, 44, 0.85);
   --accent-ember: rgba(156, 113, 49, 0.92);
   --accent-aqua: rgba(12, 136, 160, 0.92);
+  --accent-lime: rgba(180, 255, 72, 0.9);
   --surface-elevated: rgba(255, 255, 255, 0.86);
 
   --shadow-soft: 0 18px 44px rgba(26, 20, 16, 0.1);
@@ -58,6 +59,7 @@
   --accent-risk: rgba(255, 83, 86, 0.9);
   --accent-ember: rgba(236, 186, 108, 0.92);
   --accent-aqua: rgba(93, 214, 230, 0.9);
+  --accent-lime: rgba(180, 255, 72, 0.92);
   --surface-elevated: rgba(17, 14, 12, 0.9);
 
   --shadow-soft: 0 18px 44px rgba(0, 0, 0, 0.34);
@@ -98,6 +100,26 @@ body::before {
       rgba(255, 255, 255, 0) 22px
     );
   filter: saturate(1.08);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: overlay;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.02) 1px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 4px
+    ),
+    radial-gradient(600px 320px at 70% 35%, rgba(180, 255, 72, 0.09), transparent 60%),
+    radial-gradient(560px 300px at 30% 65%, rgba(255, 83, 86, 0.1), transparent 60%);
 }
 
 a {
@@ -159,10 +181,17 @@ a {
   background:
     radial-gradient(12px 12px at 32% 28%, rgba(255, 255, 255, 0.64), transparent 60%),
     linear-gradient(140deg, rgba(172, 35, 44, 0.92), rgba(172, 35, 44, 0.22));
-  color: rgba(255, 255, 255, 0.92);
-  font-weight: 900;
-  letter-spacing: -0.06em;
   box-shadow: 0 12px 26px rgba(172, 35, 44, 0.18);
+}
+
+.insignia {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+
+.insignia path {
+  vector-effect: non-scaling-stroke;
 }
 
 .brand-copy {

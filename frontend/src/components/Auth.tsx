@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { useAuth } from "../lib/useAuth";
+import { Insignia } from "./Insignia";
 
 interface AuthProps {
   onAuth: ReturnType<typeof useAuth>;
@@ -46,10 +47,12 @@ export function AuthPage({ onAuth }: AuthProps) {
       </svg>
       <header className="topbar auth-topbar">
         <div className="brand-lockup">
-          <div className="brand-mark">FS</div>
+          <div className="brand-mark">
+            <Insignia title="FinSentinel" />
+          </div>
           <div className="brand-copy">
-            <strong>FinSentinel</strong>
-            <span>NIFTY 50 signal intelligence</span>
+            <strong>Secure access</strong>
+            <span>sessions + guest mode</span>
           </div>
         </div>
         <div className="topbar-actions">

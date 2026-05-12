@@ -22,6 +22,12 @@ function formatNumber(value: number) {
 }
 
 function formatDateTime(timestamp: string) {
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(timestamp);
+  if (isDateOnly) {
+    const [year, month, day] = timestamp.split("-").map((part) => Number(part));
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) {
     return "Awaiting timestamp";
@@ -38,6 +44,8 @@ function formatDateTime(timestamp: string) {
 export function SignalCard({ signal }: SignalCardProps) {
   const compositeSentiment = Number(((signal.sentiment.news + signal.sentiment.social) / 2).toFixed(3));
   const leadFactor = signal.top_factors[0];
+  const snapshotAge =
+    signal.data_status?.age_days != null ? `${signal.data_status.age_days}d old` : null;
 
   return (
     <section className="signal-card hero-card">
@@ -52,7 +60,10 @@ export function SignalCard({ signal }: SignalCardProps) {
           <p className="hero-summary">{signal.narrative.summary}</p>
 
           <div className="signal-meta-row">
-            <span>Updated {formatDateTime(signal.as_of)}</span>
+            <span>
+              Feature snapshot {formatDateTime(signal.as_of)}
+              {snapshotAge ? ` · ${snapshotAge}` : ""}
+            </span>
             <span>Volume {formatNumber(signal.market.volume)}</span>
             <span>Divergence {signal.divergence.severity}</span>
           </div>
