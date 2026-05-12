@@ -126,6 +126,8 @@ Deploy flow:
 3. During initial setup, provide `DATABASE_URL`, `NEWS_API_KEY`, and `ALPHA_VANTAGE_KEY`.
 4. After the web service is live, verify `https://<your-render-url>/api/health`.
 
+Note: the Render backend URL is API-first. If you open `https://<your-render-url>/`, it will not serve the React bundle unless you host frontend assets there yourself. Set `FRONTEND_URL` on Render if you want `/` on the backend URL to redirect to your Vercel frontend.
+
 The backend Docker image reads `PORT` automatically, so the same image works both locally and on Render.
 
 ### Vercel frontend

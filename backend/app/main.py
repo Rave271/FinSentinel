@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import pandas as pd
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from . import config  # noqa: F401  Ensures repo .env is loaded before settings are read.
 from . import explainability, storage
@@ -20,6 +20,7 @@ SAMPLE_PATH = os.path.normpath(os.path.join(ROOT, "..", "data", "sample_headline
 NEWS_PATH = os.path.normpath(os.path.join(ROOT, "..", "data", "news_headlines.csv"))
 WS_PUSH_INTERVAL_SECONDS = float(os.environ.get("WS_PUSH_INTERVAL_SECONDS", "60"))
 ALLOW_DEV_AUTH_TOKENS = os.environ.get("ALLOW_DEV_AUTH_TOKENS", "1") == "1"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "").strip()
 
 rate_limiter = InMemoryRateLimiter()
 scheduler = build_scheduler()
@@ -92,6 +93,29 @@ async def auth_and_rate_limit_middleware(request: Request, call_next):
         return JSONResponse(status_code=401, content={"detail": "Authentication required"})
 
     return await call_next(request)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    if FRONTEND_URL:
+        return RedirectResponse(url=FRONTEND_URL, status_code=307)
+    return HTMLResponse(
+        content=(
+            "<html><head><title>FinSentinel API</title></head>"
+            "<body style='font-family: sans-serif; margin: 2rem;'>"
+            "<h1>FinSentinel API is running</h1>"
+            "<p>This service only hosts backend APIs.</p>"
+            "<p>Use <a href='/api/health'>/api/health</a> for health checks or "
+            "<a href='/docs'>/docs</a> for API docs.</p>"
+            "<p>Set FRONTEND_URL to redirect this root URL to your web app.</p>"
+            "</body></html>"
+        )
+    )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
 
 
 @app.get("/api/health")
