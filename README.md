@@ -134,6 +134,8 @@ Note: the Render backend URL is API-first. If you open `https://<your-render-url
 
 For browser login to work cross-origin, include the Vercel origin in `CORS_ORIGINS` and use `SESSION_COOKIE_SAMESITE=none` with `SESSION_COOKIE_SECURE=1` on Render.
 
+Note: `FRONTEND_URL` and `CORS_ORIGINS` accept either full origins (recommended, e.g. `https://app.vercel.app`) or bare hostnames (e.g. `app.vercel.app`). The backend normalizes these to proper origins.
+
 The backend Docker image reads `PORT` automatically, so the same image works both locally and on Render.
 
 ### Vercel frontend

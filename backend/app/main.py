@@ -2,6 +2,7 @@ import asyncio
 import os
 
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,10 +34,26 @@ _configured_cors_origins = [
     for origin in os.environ.get("CORS_ORIGINS", "").split(",")
     if origin.strip()
 ]
+
+
+def _normalize_origin(origin: str) -> str:
+    candidate = (origin or "").strip().rstrip("/")
+    if not candidate:
+        return ""
+    if "://" not in candidate:
+        candidate = f"https://{candidate}"
+    parsed = urlparse(candidate)
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+FRONTEND_ORIGIN = _normalize_origin(FRONTEND_URL)
+CORS_ORIGINS_ENV = [origin for origin in (_normalize_origin(item) for item in _configured_cors_origins) if origin]
 CORS_ORIGINS = list(
     dict.fromkeys(
-        _configured_cors_origins
-        + ([FRONTEND_URL] if FRONTEND_URL else [])
+        CORS_ORIGINS_ENV
+        + ([FRONTEND_ORIGIN] if FRONTEND_ORIGIN else [])
         + [
             "http://localhost:3000",
             "http://localhost:4173",
@@ -92,7 +109,7 @@ app = FastAPI(title="FinSentinel API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost(:\\d+)?|http://127\\.0\\.1(:\\d+)?",
+    allow_origin_regex=r"https://.*\.vercel\.app|https?://localhost(:\\d+)?|https?://127\\.0\\.0\\.1(:\\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
