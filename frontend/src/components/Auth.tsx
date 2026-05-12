@@ -25,97 +25,138 @@ export function AuthPage({ onAuth }: AuthProps) {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card glass-card">
-        <div className="auth-header">
+    <div className="app-shell auth-shell">
+      <header className="topbar auth-topbar">
+        <div className="brand-lockup">
           <div className="brand-mark">FS</div>
-          <h1>{isLogin ? "Sign In" : "Create Account"}</h1>
-          <p>FinSentinel - NIFTY 50 signal intelligence</p>
+          <div className="brand-copy">
+            <strong>FinSentinel</strong>
+            <span>NIFTY 50 signal intelligence</span>
+          </div>
         </div>
+        <div className="topbar-actions">
+          <div className="status-indicator live">Secure Sessions</div>
+          <div className="auth-topbar-note">Bcrypt login with HttpOnly sessions</div>
+        </div>
+      </header>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+      <section className="hero-layout auth-layout">
+        <section className="hero-intro auth-intro">
+          <div className="page-header">
+            <div>
+              <span className="eyebrow">Access Control</span>
+              <h1>Sign in to your market desk.</h1>
+              <p>
+                Use your account to keep a private session, or enter guest mode to explore the
+                dashboard with the built-in demo token.
+              </p>
+            </div>
+          </div>
 
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              minLength={8}
-              required
-            />
-          </label>
+          <div className="hero-stat-grid auth-stat-grid">
+            <div className="hero-stat-card">
+              <span>Session mode</span>
+              <strong>HttpOnly</strong>
+              <small>Cookies, not local storage</small>
+            </div>
+            <div className="hero-stat-card">
+              <span>Hashing</span>
+              <strong>Bcrypt</strong>
+              <small>Password protection on the backend</small>
+            </div>
+            <div className="hero-stat-card">
+              <span>Guest mode</span>
+              <strong>Demo token</strong>
+              <small>Browse without creating an account</small>
+            </div>
+          </div>
+        </section>
 
-          {!isLogin && (
-            <label>
-              <span>Confirm Password</span>
+        <section className="glass-card auth-card">
+          <div className="auth-header">
+            <h2>{isLogin ? "Sign in" : "Create your account"}</h2>
+            <p>{isLogin ? "Return to your signal workspace." : "Create a secure session to save your state."}</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+              />
+            </label>
+
+            <label className="auth-field">
+              <span>Password</span>
               <input
                 type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 minLength={8}
                 required
               />
             </label>
-          )}
 
-          {onAuth.error && (
-            <div className="auth-error">
-              <strong>Error:</strong> {onAuth.error}
+            {!isLogin ? (
+              <label className="auth-field">
+                <span>Confirm password</span>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+            ) : null}
+
+            {onAuth.error ? <div className="auth-error">{onAuth.error}</div> : null}
+
+            <div className="auth-actions">
+              <button type="submit" className="primary-button auth-button" disabled={onAuth.loading}>
+                {onAuth.loading ? "Working..." : isLogin ? "Sign in" : "Create account"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button auth-button"
+                onClick={async () => {
+                  await onAuth.guestLogin();
+                }}
+                disabled={onAuth.loading}
+              >
+                Continue as guest
+              </button>
             </div>
-          )}
+          </form>
 
-          <button
-            type="submit"
-            className="primary-button auth-button"
-            disabled={onAuth.loading}
-          >
-            {onAuth.loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setEmail("");
-                setPassword("");
-                setConfirmPassword("");
-              }}
-            >
-              {isLogin ? "Sign up" : "Sign in"}
-            </button>
-          </p>
-        </div>
-
-        <div className="auth-divider">
-          <span>or continue without account</span>
-        </div>
-
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => window.location.reload()}
-        >
-          Continue as Guest
-        </button>
-      </div>
+          <div className="auth-footer">
+            <span>
+              {isLogin ? "Need an account?" : "Already have an account?"}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setEmail("");
+                  setPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                {isLogin ? "Register" : "Sign in"}
+              </button>
+            </span>
+          </div>
+        </section>
+      </section>
     </div>
   );
 }

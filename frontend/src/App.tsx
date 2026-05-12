@@ -105,16 +105,16 @@ export default function App() {
     ? Number(((signal.sentiment.news + signal.sentiment.social) / 2).toFixed(3))
     : null;
 
-  if (!auth.user) {
-    return <AuthPage onAuth={auth} />;
-  }
-
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem("finsentinel-theme", theme);
   }, [theme]);
 
   useEffect(() => {
+    if (!auth.user) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadDashboard() {
@@ -154,9 +154,13 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedTicker]);
+  }, [auth.user, selectedTicker]);
 
   useEffect(() => {
+    if (!auth.user) {
+      return;
+    }
+
     const socket = new WebSocket(buildWebsocketUrl(selectedTicker));
     setConnectionState("connecting");
 
@@ -179,7 +183,7 @@ export default function App() {
     return () => {
       socket.close();
     };
-  }, [selectedTicker]);
+  }, [auth.user, selectedTicker]);
 
   function handleSelectTicker(nextTicker: string) {
     if (!nextTicker) {
@@ -198,6 +202,10 @@ export default function App() {
       setPortfolio(null);
       setError(null);
     });
+  }
+
+  if (!auth.user) {
+    return <AuthPage onAuth={auth} />;
   }
 
   return (
@@ -302,7 +310,7 @@ export default function App() {
             <LivePulseChart points={livePoints} connectionState={connectionState} />
             <NewsFeedPanel items={news} />
             <DivergenceAlerts ticker={selectedTicker} selected={divergence} portfolio={portfolio} />
-            <PortfolioAnalyzer seedTicker={selectedTicker} suggestions={TICKERS} onAnalysis={setPortfolio} isAuthenticated={!!auth.user} />
+            <PortfolioAnalyzer seedTicker={selectedTicker} suggestions={TICKERS} onAnalysis={setPortfolio} isAuthenticated={auth.user?.role !== "guest"} />
 
             <section className="glass-card notes-card">
               <div className="panel-header">

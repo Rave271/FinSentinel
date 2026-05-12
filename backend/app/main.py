@@ -28,6 +28,25 @@ from .sentiment import sentiment_score
 WS_PUSH_INTERVAL_SECONDS = float(os.environ.get("WS_PUSH_INTERVAL_SECONDS", "60"))
 ALLOW_DEV_AUTH_TOKENS = os.environ.get("ALLOW_DEV_AUTH_TOKENS", "1") == "1"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "").strip()
+_configured_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+CORS_ORIGINS = list(
+    dict.fromkeys(
+        _configured_cors_origins
+        + ([FRONTEND_URL] if FRONTEND_URL else [])
+        + [
+            "http://localhost:3000",
+            "http://localhost:4173",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:4173",
+            "http://127.0.0.1:5173",
+        ]
+    )
+)
 SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "finsentinel_session")
 SESSION_TTL_SECONDS = int(os.environ.get("SESSION_TTL_SECONDS", "86400"))
 SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
@@ -71,7 +90,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="FinSentinel API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

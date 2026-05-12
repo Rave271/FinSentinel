@@ -70,6 +70,25 @@ export function useAuth() {
     }
   };
 
+  const guestLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authService.guestLogin();
+      setUser({
+        email: "guest@finsentinel.local",
+        role: "guest",
+      });
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Guest login failed";
+      setError(message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     setLoading(true);
     try {
@@ -84,5 +103,5 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, error, register, login, logout };
+  return { user, loading, error, register, login, guestLogin, logout };
 }
