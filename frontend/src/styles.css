@@ -1326,12 +1326,12 @@ section[id] {
 .dashboard-grid {
   margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 
 .chart-card {
-  grid-column: span 6;
+  grid-column: span 3;
   padding: 18px;
 }
 
@@ -1359,17 +1359,17 @@ section[id] {
 }
 
 .news-card {
-  grid-column: span 6;
+  grid-column: span 3;
   padding: 18px;
 }
 
 .portfolio-card {
-  grid-column: span 6;
+  grid-column: span 3;
   padding: 18px;
 }
 
 .notes-card {
-  grid-column: span 6;
+  grid-column: span 3;
   padding: 18px;
 }
 
@@ -1586,7 +1586,8 @@ section[id] {
   .chart-card,
   .news-card,
   .portfolio-card,
-  .notes-card {
+  .notes-card,
+  .alerts-card {
     grid-column: span 6;
   }
 
