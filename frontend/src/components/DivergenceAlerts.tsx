@@ -2,13 +2,14 @@ import type { DivergenceSnapshot, PortfolioResponse } from "../types";
 
 
 interface DivergenceAlertsProps {
+  id?: string;
   ticker: string;
   selected: DivergenceSnapshot | null;
   portfolio: PortfolioResponse | null;
 }
 
 
-export function DivergenceAlerts({ ticker, selected, portfolio }: DivergenceAlertsProps) {
+export function DivergenceAlerts({ id, ticker, selected, portfolio }: DivergenceAlertsProps) {
   const alerts = [
     ...(selected
       ? [
@@ -33,7 +34,7 @@ export function DivergenceAlerts({ ticker, selected, portfolio }: DivergenceAler
   ];
 
   return (
-    <section className="glass-card alerts-card">
+    <section id={id} className="glass-card alerts-card">
       <div className="panel-header">
         <div>
           <div className="section-kicker">Divergence Alerts</div>

@@ -2,6 +2,7 @@ import type { NewsItem } from "../types";
 
 
 interface NewsFeedPanelProps {
+  id?: string;
   items: NewsItem[];
 }
 
@@ -11,9 +12,9 @@ function toneClass(label: string) {
 }
 
 
-export function NewsFeedPanel({ items }: NewsFeedPanelProps) {
+export function NewsFeedPanel({ id, items }: NewsFeedPanelProps) {
   return (
-    <section className="glass-card news-card">
+    <section id={id} className="glass-card news-card">
       <div className="panel-header">
         <div>
           <div className="section-kicker">News Feed</div>

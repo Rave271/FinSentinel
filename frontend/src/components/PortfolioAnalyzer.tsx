@@ -4,6 +4,7 @@ import { analyzePortfolio, analyzePortfolioSession, fetchDevToken } from "../lib
 import type { PortfolioHoldingInput, PortfolioResponse } from "../types";
 
 interface PortfolioAnalyzerProps {
+  id?: string;
   seedTicker: string;
   suggestions: string[];
   onAnalysis: (portfolio: PortfolioResponse | null) => void;
@@ -16,7 +17,13 @@ interface DraftHolding {
   average_cost: string;
 }
 
-export function PortfolioAnalyzer({ seedTicker, suggestions, onAnalysis, isAuthenticated = false }: PortfolioAnalyzerProps) {
+export function PortfolioAnalyzer({
+  id,
+  seedTicker,
+  suggestions,
+  onAnalysis,
+  isAuthenticated = false
+}: PortfolioAnalyzerProps) {
   const [rows, setRows] = useState<DraftHolding[]>([{ ticker: seedTicker, quantity: "8", average_cost: "1500" }]);
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState("Ready to analyze.");
@@ -87,7 +94,7 @@ export function PortfolioAnalyzer({ seedTicker, suggestions, onAnalysis, isAuthe
   }
 
   return (
-    <section className="glass-card portfolio-card">
+    <section id={id} className="glass-card portfolio-card">
       <div className="panel-header">
         <div>
           <div className="section-kicker">Portfolio Lens</div>
