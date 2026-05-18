@@ -1330,6 +1330,12 @@ section[id] {
   gap: 12px;
 }
 
+#news,
+#alerts,
+#portfolio {
+  grid-column: span 3;
+}
+
 .chart-card {
   grid-column: span 3;
   padding: 18px;
@@ -1581,6 +1587,12 @@ section[id] {
 
   .dashboard-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  #news,
+  #alerts,
+  #portfolio {
+    grid-column: span 6;
   }
 
   .chart-card,
