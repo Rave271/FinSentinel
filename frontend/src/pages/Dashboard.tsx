@@ -306,14 +306,20 @@ export function DashboardPage() {
           <main className="dashboard-grid" id="analysis">
             <ShapFactorsChart factors={signal.top_factors} />
             <LivePulseChart points={livePoints} connectionState={connectionState} />
-            <NewsFeedPanel items={news} />
-            <DivergenceAlerts ticker={selectedTicker} selected={divergence} portfolio={portfolio} />
-            <PortfolioAnalyzer
-              seedTicker={selectedTicker}
-              suggestions={TICKERS}
-              onAnalysis={setPortfolio}
-              isAuthenticated={auth.user?.role !== "guest"}
-            />
+            <div id="news">
+              <NewsFeedPanel items={news} />
+            </div>
+            <div id="alerts">
+              <DivergenceAlerts ticker={selectedTicker} selected={divergence} portfolio={portfolio} />
+            </div>
+            <div id="portfolio">
+              <PortfolioAnalyzer
+                seedTicker={selectedTicker}
+                suggestions={TICKERS}
+                onAnalysis={setPortfolio}
+                isAuthenticated={auth.user?.role !== "guest"}
+              />
+            </div>
 
             <section className="glass-card notes-card">
               <div className="panel-header">

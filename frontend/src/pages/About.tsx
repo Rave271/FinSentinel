@@ -30,14 +30,10 @@ export function AboutPage() {
               <br />
               GitHub: <span className="mono">rave271</span>
             </p>
-            <p className="muted">
-              This build focuses on an abstract, modern UI: creamy marble whites, transparent crimson accents,
-              and subtle Greek-statue linework as a motif.
-            </p>
+            <p className="muted">Designed as a practical “signal desk” UI: clear hierarchy, calm visuals, and fast scanning.</p>
           </div>
         </div>
       </div>
     </section>
   );
 }
-

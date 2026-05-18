@@ -30,7 +30,9 @@ export function LivePulseChart({ points, connectionState }: LivePulseChartProps)
           <div className="section-kicker">Live Pulse</div>
           <h2>Price vs sentiment</h2>
         </div>
-        <p>WebSocket state: <span className="status-pill">{connectionState}</span></p>
+        <p>
+          WebSocket state: <span className="status-pill">{connectionState}</span>
+        </p>
       </div>
 
       <div className="chart-shell">
@@ -47,8 +49,10 @@ export function LivePulseChart({ points, connectionState }: LivePulseChartProps)
                 borderRadius: 18,
                 color: "var(--text-main)"
               }}
+              labelStyle={{ color: "var(--text-soft)" }}
+              itemStyle={{ color: "var(--text-main)" }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: "var(--text-soft)" }} />
             <Line
               yAxisId="left"
               type="monotone"

@@ -153,15 +153,29 @@ def score_texts(texts: List[str]) -> List[Dict]:
     return get_pipeline().score(texts)
 
 
-def sentiment_score(text: str) -> Dict:
+def sentiment_score(text: str, redis_client=None) -> Dict:
     if not text:
         return {"label": "neutral", "score": 0.0}
 
     result = score_texts([text])[0]
-    return {
-        "label": result["sentiment_label"],
-        "score": result["sentiment_score"],
+    label = result["sentiment_label"]
+    score = result["sentiment_score"]
+
+    sentiment_dict = {
+        "label": label,
+        "score": score,
     }
+
+    # Add LLM summary if available
+    try:
+        from app.llm_summary import get_or_generate_summary
+        summary = get_or_generate_summary(text, label, score, redis_client)
+        if summary:
+            sentiment_dict["llm_summary"] = summary
+    except Exception:
+        pass
+
+    return sentiment_dict
 
 
 def _to_datetime(value):

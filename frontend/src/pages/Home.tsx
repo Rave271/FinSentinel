@@ -11,10 +11,10 @@ export function HomePage() {
       <div className="home-hero-surface">
         <div className="home-hero-copy">
           <span className="eyebrow">Market Intelligence</span>
-          <h1>Creme marble UX for market signal ops.</h1>
+          <h1>A calmer signal desk for NIFTY 50 monitoring.</h1>
           <p>
-            A modern, explainable dashboard for NIFTY 50 signals: sentiment drift, factor drivers,
-            divergence alerts, and portfolio risk—built to feel like a calm trading desk, not a noisy terminal.
+            FinSentinel brings price snapshots, sentiment, model signals, and divergence checks into one workspace so
+            you can answer “what changed, why, and how confident are we?” quickly.
           </p>
 
           <div className="home-cta">
@@ -44,9 +44,9 @@ export function HomePage() {
               <small>Trained universe + explainability</small>
             </div>
             <div className="meta-card">
-              <span>Aesthetic</span>
-              <strong>Marble + crimson</strong>
-              <small>Greek statue motifs, translucent layers</small>
+              <span>Workflow</span>
+              <strong>Operator-first</strong>
+              <small>Overview → drivers → news → alerts</small>
             </div>
           </div>
         </div>

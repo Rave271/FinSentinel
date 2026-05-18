@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
+from redis import Redis
 
 from . import config  # noqa: F401  Ensures repo .env is loaded before settings are read.
 from . import explainability, storage
@@ -71,6 +72,12 @@ SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "lax").strip
 
 rate_limiter = InMemoryRateLimiter()
 scheduler = build_scheduler()
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+try:
+    redis_client = Redis.from_url(REDIS_URL)
+except Exception:
+    redis_client = None
 
 
 class RegisterPayload(BaseModel):
@@ -207,7 +214,7 @@ def health():
 def list_headlines():
     records = storage.load_headlines(limit=50)
     for record in records:
-        record["sentiment"] = sentiment_score(record.get("headline", ""))
+        record["sentiment"] = sentiment_score(record.get("headline", ""), redis_client=redis_client)
     return JSONResponse(content=records)
 
 
@@ -216,7 +223,7 @@ def list_news():
     records = storage.load_news_articles(limit=50)
     for record in records:
         headline = record.get("headline") or ""
-        record["sentiment"] = sentiment_score(headline)
+        record["sentiment"] = sentiment_score(headline, redis_client=redis_client)
     return JSONResponse(content=records)
 
 
@@ -323,7 +330,7 @@ def me(request: Request):
 @app.get("/api/signal/{ticker}")
 def get_signal(ticker: str):
     try:
-        payload = build_signal_snapshot(ticker)
+        payload = build_signal_snapshot(ticker, redis_client=redis_client)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return JSONResponse(content=payload)
@@ -331,7 +338,7 @@ def get_signal(ticker: str):
 
 @app.get("/api/news/{ticker}")
 def get_ticker_news(ticker: str, limit: int = 10):
-    return JSONResponse(content={"ticker": ticker.upper(), "items": build_news_feed(ticker, limit=limit)})
+    return JSONResponse(content={"ticker": ticker.upper(), "items": build_news_feed(ticker, limit=limit, redis_client=redis_client)})
 
 
 @app.get("/api/divergence/{ticker}")

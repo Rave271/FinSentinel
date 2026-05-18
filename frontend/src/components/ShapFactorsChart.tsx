@@ -26,13 +26,15 @@ export function ShapFactorsChart({ factors }: ShapFactorsChartProps) {
             <XAxis type="number" stroke="var(--text-soft)" />
             <YAxis dataKey="label" type="category" width={124} stroke="var(--text-soft)" />
             <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+              cursor={{ fill: "color-mix(in srgb, var(--text-main) 6%, transparent)" }}
               contentStyle={{
                 background: "var(--surface-elevated)",
                 border: "1px solid var(--line-strong)",
                 borderRadius: 18,
                 color: "var(--text-main)"
               }}
+              labelStyle={{ color: "var(--text-soft)" }}
+              itemStyle={{ color: "var(--text-main)" }}
             />
             <Bar dataKey="shap_value" radius={[10, 10, 10, 10]}>
               {factors.map((factor) => (

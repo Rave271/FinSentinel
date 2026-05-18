@@ -122,6 +122,16 @@ def build_signal_snapshot(ticker: str, redis_client=None) -> Dict:
     except Exception:
         age_days = None
 
+    sentiment_dict = {
+        "news": round(_safe_float(merged.get("sentiment_news")), 4),
+        "social": round(_safe_float(merged.get("sentiment_social")), 4),
+        "divergence": merged["sentiment_divergence"],
+    }
+
+    news_narrative = _aggregate_sentiment_narratives(ticker, limit=5, redis_client=redis_client)
+    if news_narrative:
+        sentiment_dict["news_summary"] = news_narrative
+
     return {
         "ticker": ticker.upper(),
         "as_of": merged.get("date"),
@@ -139,11 +149,7 @@ def build_signal_snapshot(ticker: str, redis_client=None) -> Dict:
             "price_delta_1d": round(_safe_float(merged.get("price_delta_1d")), 6),
             "price_delta_5d": round(_safe_float(merged.get("price_delta_5d")), 6),
         },
-        "sentiment": {
-            "news": round(_safe_float(merged.get("sentiment_news")), 4),
-            "social": round(_safe_float(merged.get("sentiment_social")), 4),
-            "divergence": merged["sentiment_divergence"],
-        },
+        "sentiment": sentiment_dict,
         "signal": explanation["signal"],
         "narrative": explanation["narrative"],
         "top_factors": explanation["top_factors"],
@@ -151,32 +157,72 @@ def build_signal_snapshot(ticker: str, redis_client=None) -> Dict:
     }
 
 
-def build_news_feed(ticker: str, limit: int = 10) -> List[Dict]:
+def build_news_feed(ticker: str, limit: int = 10, redis_client=None) -> List[Dict]:
     rows = storage.filter_rows_for_ticker(storage.load_news_articles(limit=100), ticker)
     if not rows:
         return []
 
+    client = redis_client or redis
     feed = []
     for row in rows[:limit]:
         headline = str(row.get("headline", ""))
         score = row.get("sentiment_score")
         if score is None or score == "":
-            summary = sentiment.sentiment_score(headline)
+            summary = sentiment.sentiment_score(headline, redis_client=client)
             score = summary["score"]
             label = summary["label"]
+            llm_summary = summary.get("llm_summary", "")
         else:
             score = round(_safe_float(score), 4)
             label = "positive" if score > 0.1 else "negative" if score < -0.1 else "neutral"
+            llm_summary = ""
+
+        sentiment_dict = {"label": label, "score": round(_safe_float(score), 4)}
+        if llm_summary:
+            sentiment_dict["llm_summary"] = llm_summary
+
         feed.append(
             {
                 "headline": headline,
                 "source": row.get("source", ""),
                 "published_at": row.get("published_at", ""),
                 "url": row.get("url", ""),
-                "sentiment": {"label": label, "score": round(_safe_float(score), 4)},
+                "sentiment": sentiment_dict,
             }
         )
     return feed
+
+
+def _aggregate_sentiment_narratives(ticker: str, limit: int = 5, redis_client=None) -> str:
+    """Aggregate top news summaries into a single narrative."""
+    feed = build_news_feed(ticker, limit=limit, redis_client=redis_client)
+    summaries = [item["sentiment"].get("llm_summary", "") for item in feed if item["sentiment"].get("llm_summary")]
+    if not summaries:
+        return ""
+
+    try:
+        from app.llm_summary import get_generator
+        generator = get_generator()
+        if not generator:
+            return ""
+
+        combined_text = " ".join(summaries)
+        prompt = f"""Given these financial news sentiment summaries for {ticker}, provide one 2-3 sentence consolidated narrative explaining the overall news sentiment direction:
+
+Summaries:
+{combined_text}
+
+Consolidated Narrative:"""
+
+        message = generator.client.chat.completions.create(
+            model=generator.model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+            temperature=0.7,
+        )
+        return message.choices[0].message.content.strip()
+    except Exception:
+        return ""
 
 
 def analyze_portfolio(holdings: List[Dict], user_subject: str) -> Dict:
